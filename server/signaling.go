@@ -14,16 +14,16 @@ var upgrader = websocket.Upgrader{
 }
 
 type SignalMessage struct {
-	Type      string
-	Offer     interface{}
-	Answer    interface{}
-	Candidate interface{}
+	Type      string      `json:"type"`
+	Offer     interface{} `json:"offer,omitempty"`
+	Answer    interface{} `json:"answer,omitempty"`
+	Candidate interface{} `json:"candidate,omitempty"`
 }
 
 func HandleWebsocket(roomMap *RoomMap, writer http.ResponseWriter, reader *http.Request) {
-	roomId := reader.URL.Query().Get("room")
+	roomID := reader.URL.Query().Get("room")
 
-	if roomId == "" {
+	if roomID == "" {
 		http.Error(writer, "room Id is required", http.StatusBadRequest)
 		return
 	}
@@ -39,14 +39,14 @@ func HandleWebsocket(roomMap *RoomMap, writer http.ResponseWriter, reader *http.
 	}
 
 	roomMap.Lock()
-	roomMap.Rooms[roomId] = append(roomMap.Rooms[roomId], particiant)
+	roomMap.Rooms[roomID] = append(roomMap.Rooms[roomID], particiant)
 	roomMap.Unlock()
 
 	defer func() {
 		conn.Close()
 		roomMap.Lock()
 
-		particiants := roomMap.Rooms[roomId]
+		particiants := roomMap.Rooms[roomID]
 
 		for i, p := range particiants {
 			if p.Conn == conn {
@@ -55,9 +55,9 @@ func HandleWebsocket(roomMap *RoomMap, writer http.ResponseWriter, reader *http.
 			}
 		}
 		if len(particiants) == 0 {
-			delete(roomMap.Rooms, roomId)
+			delete(roomMap.Rooms, roomID)
 		} else {
-			roomMap.Rooms[roomId] = particiants
+			roomMap.Rooms[roomID] = particiants
 		}
 		roomMap.Unlock()
 	}()
@@ -73,7 +73,7 @@ func HandleWebsocket(roomMap *RoomMap, writer http.ResponseWriter, reader *http.
 
 		broadcastToRoom(
 			roomMap,
-			roomId,
+			roomID,
 			conn,
 			message,
 		)
@@ -82,14 +82,14 @@ func HandleWebsocket(roomMap *RoomMap, writer http.ResponseWriter, reader *http.
 
 func broadcastToRoom(
 	roomMap *RoomMap,
-	roomId string,
+	roomID string,
 	sender *websocket.Conn,
 	message SignalMessage,
 ) {
 	roomMap.Lock()
 	defer roomMap.Unlock()
 
-	particiants := roomMap.Rooms[roomId]
+	particiants := roomMap.Rooms[roomID]
 
 	for _, particiant := range particiants {
 		if particiant.Conn == sender {
